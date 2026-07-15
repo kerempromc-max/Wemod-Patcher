@@ -13,20 +13,20 @@ jobs:
       with:
         submodules: recursive
 
+    # Added -DCMAKE_C_FLAGS="/TP" to force MSVC to compile library.c as C++
     - name: Configure CMake for Proxy DLL
-      run: cmake -S tools/asar-fuses-bypass -B tools/asar-fuses-bypass/cmake-build-release -DCMAKE_BUILD_TYPE=Release
+      run: |
+        cmake -S tools/asar-fuses-bypass -B tools/asar-fuses-bypass/cmake-build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="/TP"
 
     - name: Build Proxy DLL with CMake
       run: cmake --build tools/asar-fuses-bypass/cmake-build-release --config Release
 
-    # Smart step: Finds any built DLL and forces it into the exact folder & name MSBuild expects
     - name: Force Locate and Copy Proxy DLL
       shell: pwsh
       run: |
         $destDir = "$env:GITHUB_WORKSPACE/tools/asar-fuses-bypass/cmake-build-release"
         New-Item -ItemType Directory -Force -Path $destDir
         
-        # Search for any DLL built by CMake, excluding the destination itself
         $dll = Get-ChildItem -Path "$env:GITHUB_WORKSPACE/tools/asar-fuses-bypass" -Filter "*.dll" -Recurse | Where-Object { $_.FullName -notlike "*cmake-build-release/version.dll" } | Select-Object -First 1
         
         if ($dll) {
