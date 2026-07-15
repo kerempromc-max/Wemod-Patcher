@@ -1,7 +1,7 @@
 name: Build WeMod Patcher
 
 on:
-  workflow_dispatch: # Allows you to run it manually
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,13 +9,35 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.2.2
+      with:
+        submodules: recursive
+
+    - name: Configure CMake for Proxy DLL
+      run: cmake -S tools/asar-fuses-bypass -B tools/asar-fuses-bypass/cmake-build-release -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build Proxy DLL with CMake
+      run: cmake --build tools/asar-fuses-bypass/cmake-build-release --config Release
+
+    # Smart step: Finds version.dll wherever CMake put it and copies it to the right folder
+    - name: Locate and Copy Proxy DLL
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "tools/asar-fuses-bypass/cmake-build-release"
+        $dll = Get-ChildItem -Path "tools" -Filter "version.dll" -Recurse | Select-Object -First 1
+        if ($dll) {
+            Copy-Item -Path $dll.FullName -Destination "tools/asar-fuses-bypass/cmake-build-release/version.dll" -Force
+            Write-Host "Successfully found and copied version.dll!"
+        } else {
+            Write-Error "Could not find version.dll. CMake build might have failed."
+            exit 1
+        }
 
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup NuGet
-      uses: NuGet/setup-nuget@v1
+      uses: NuGet/setup-nuget@v4
 
     - name: Restore NuGet Packages
       run: nuget restore Wemod-Patcher.sln
