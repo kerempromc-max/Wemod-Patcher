@@ -1,0 +1,32 @@
+name: Build WeMod Patcher
+
+on:
+  workflow_dispatch: # Allows you to run it manually
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1
+
+    - name: Restore NuGet Packages
+      run: nuget restore Wemod-Patcher.sln
+
+    - name: Build Solution
+      run: msbuild Wemod-Patcher.sln /p:Configuration=Release
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WeMod-Patcher-Build
+        path: |
+          **/bin/Release/**/*.exe
+          **/bin/Release/**/*.dll
