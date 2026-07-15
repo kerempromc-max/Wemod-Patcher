@@ -19,17 +19,22 @@ jobs:
     - name: Build Proxy DLL with CMake
       run: cmake --build tools/asar-fuses-bypass/cmake-build-release --config Release
 
-    # Smart step: Finds version.dll wherever CMake put it and copies it to the right folder
-    - name: Locate and Copy Proxy DLL
+    # Smart step: Finds any built DLL and forces it into the exact folder & name MSBuild expects
+    - name: Force Locate and Copy Proxy DLL
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path "tools/asar-fuses-bypass/cmake-build-release"
-        $dll = Get-ChildItem -Path "tools" -Filter "version.dll" -Recurse | Select-Object -First 1
+        $destDir = "$env:GITHUB_WORKSPACE/tools/asar-fuses-bypass/cmake-build-release"
+        New-Item -ItemType Directory -Force -Path $destDir
+        
+        # Search for any DLL built by CMake, excluding the destination itself
+        $dll = Get-ChildItem -Path "$env:GITHUB_WORKSPACE/tools/asar-fuses-bypass" -Filter "*.dll" -Recurse | Where-Object { $_.FullName -notlike "*cmake-build-release/version.dll" } | Select-Object -First 1
+        
         if ($dll) {
-            Copy-Item -Path $dll.FullName -Destination "tools/asar-fuses-bypass/cmake-build-release/version.dll" -Force
-            Write-Host "Successfully found and copied version.dll!"
+            Write-Host "Found compiled DLL at: $($dll.FullName)"
+            Copy-Item -Path $dll.FullName -Destination "$destDir/version.dll" -Force
+            Write-Host "Successfully copied and renamed to: $destDir/version.dll"
         } else {
-            Write-Error "Could not find version.dll. CMake build might have failed."
+            Write-Error "Could not find any compiled DLL! The CMake build may have failed silently."
             exit 1
         }
 
